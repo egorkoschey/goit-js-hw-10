@@ -3,61 +3,66 @@ import {fetchCountries} from "./fetchCountries";
 import { Notify } from 'notiflix';
 import debounce from 'lodash.debounce';
 
-const searchBox = document.getElementById('search-box');
-const countryInfo = document.querySelector('.country-info');
-const countryList = document.querySelector('.country-list');
 const DEBOUNCE_DELAY = 300;
 
-searchBox.addEventListener('input', debounce(getCountry, DEBOUNCE_DELAY));
+const input = document.querySelector("#search-box");
+const list = document.querySelector(".country-list");
+const div = document.querySelector(".country-info");
 
-function getCountry(evt) {
-    countryInfo.innerHTML = ' ';
-    countryList.innerHTML = ' ';
-    let inputValue = evt.target.value.trim();
-    if(!inputValue){
+let countryName = '';
+
+input.addEventListener("input", debounce(onInputChange, DEBOUNCE_DELAY));
+
+function onInputChange() {
+    countryName = input.value.trim();
+    if (countryName === '') {
+        clearAll();
         return;
-    } 
-    fetchCountries(inputValue)
-    .then(response => {
-      return response;
-  })
-    .then(json => {
-        if(json.length > 10) {
-            return Notify.info('Too many matches found. Please enter a more specific name.');
-          } 
-          if (json.length >= 2 && json.length <= 10){
-            const markup = json.map(element => {
-             return `
-              <li class=country-item>
-                <img src=${element.flags.svg} alt=${element.name.official} width=40px/>
-                <p>${element.name.official}</p>
-              </li>
-                `
-            }).join('')
-            countryList.insertAdjacentHTML('beforeend', markup)
-          } 
-          if (json.length === 1){
-            const markup = json.map(element => {
-             return `
-             <div class=blok>
-             <div class=country-info>
-                 <img src=${element.flags.svg} alt=${element.name.official} width=40px/>
-                 <p class=country-name> ${element.name.official}</p>
-             </div>
-             <ul>
-                 <li class=country-item>
-                     <p><b>Capital:</b></p> ${element.capital}</li>
-                 <li class=country-item>
-                     <p><b>Population:</b></p> ${element.population}</li>
-                 <li class=country-item>
-                     <p><b>Languages:</b></p> ${Object.values(element.languages).join(',')}</li>
-             </ul>
-             </div>
-             `
-            }).join('')
-            countryInfo.insertAdjacentHTML('beforeend', markup)
-         
-          };
-            
+    } else fetchCountries(countryName).then(countryNames => {
+        if (countryNames.length < 2) {
+            countryCard(countryNames);
+            Notify.success('Here your result');
+        } else if (countryNames.length < 10 && countryNames.length > 1) {
+            countrieList(countryNames);
+            Notify.success('Here your results');
+        } else {
+            clearAll();
+            Notify.info('Too many matches found. Please enter a more specific name.');
+        };
     })
-    }
+      .catch(() => {
+        clearAll();
+        Notify.failure('Oops, there is no country with that name');
+      });
+};
+
+function countrieList(country) {
+    clearAll();
+    const readyList = country.map((c) => 
+        `<li class="country-list--item">
+            <img src="${c.flags.svg}" alt="Country flag" width="40", height="30">
+            <span class="country-list--name">${c.name.official}</span>
+        </li>`)
+        .join("");
+    list.insertAdjacentHTML('beforeend', readyList);
+};
+
+function countryCard(country) {
+    clearAll();
+    const c = country[0];
+    const readyCard = `<div class="country-card">
+        <div class="country-card--header">
+            <img src="${c.flags.svg}" alt="Country flag" width="55", height="35">
+            <h2 class="country-card--name"> ${c.name.official}</h2>
+        </div>
+            <p class="country-card--field">Capital: <span class="country-value">${c.capital}</span></p>
+            <p class="country-card--field">Population: <span class="country-value">${c.population}</span></p>
+            <p class="country-card--field">Languages: <span class="country-value">${Object.values(c.languages).join(',')}</span></p>
+    </div>`
+    div.innerHTML = readyCard;
+};
+
+function clearAll() {
+  list.innerHTML = '';
+  div.innerHTML = '';
+};
